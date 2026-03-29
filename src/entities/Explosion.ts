@@ -21,7 +21,7 @@ export class Explosion {
         this.growing = false;
       }
     } else {
-      this.radius -= 1.25;
+      this.radius -= 0.6;
       if (this.radius <= 0) {
         this.alive = false;
       }

@@ -26,7 +26,8 @@ export class Sound {
     osc.stop(this.ctx.currentTime + duration);
   }
 
-  noise(duration: number, gain = 0.3): void {
+  private filteredNoise(duration: number, gain: number, freqStart: number, freqEnd: number): void {
+    const t = this.ctx.currentTime;
     const bufferSize = Math.floor(this.ctx.sampleRate * duration);
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -36,16 +37,38 @@ export class Sound {
     }
 
     const source = this.ctx.createBufferSource();
-    const g = this.ctx.createGain();
-
     source.buffer = buffer;
-    source.connect(g);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(freqStart, t);
+    filter.frequency.exponentialRampToValueAtTime(freqEnd, t + duration);
+
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+    source.connect(filter);
+    filter.connect(g);
     g.connect(this.ctx.destination);
+    source.start(t);
+  }
 
-    g.gain.setValueAtTime(gain, this.ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+  private thud(freq: number, duration: number, gain: number): void {
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.3, t + duration);
 
-    source.start();
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+    osc.connect(g);
+    g.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration);
   }
 
   shoot(): void {
@@ -53,11 +76,14 @@ export class Sound {
   }
 
   explosion(): void {
-    this.noise(0.15, 0.4);
+    this.filteredNoise(0.5, 0.6, 1200, 180);
+    this.thud(90, 0.25, 0.4);
   }
 
   bigExplosion(): void {
-    this.noise(0.3, 0.6);
+    this.filteredNoise(1.0, 0.9, 1800, 120);
+    this.thud(60, 0.5, 0.7);
+    this.thud(120, 0.2, 0.35);
   }
 
   split(): void {
