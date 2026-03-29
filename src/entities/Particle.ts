@@ -1,13 +1,31 @@
+/** 爆発時に生成されるパーティクルエフェクトを表すクラス */
 export class Particle {
+  /** 現在のX座標 */
   x: number;
+  /** 現在のY座標 */
   y: number;
+  /** X方向の速度 */
   vx: number;
+  /** Y方向の速度 */
   vy: number;
+  /** 残りライフ（フレーム数） */
   life: number;
+  /** 初期ライフ（フェードアウト計算に使用） */
   maxLife: number;
+  /** パーティクルの半径 */
   size: number;
+  /** 生存フラグ */
   alive = true;
 
+  /**
+   * パーティクルを初期化する
+   * @param x 初期X座標
+   * @param y 初期Y座標
+   * @param vx X方向の初速
+   * @param vy Y方向の初速
+   * @param life 生存フレーム数
+   * @param size パーティクルの半径
+   */
   constructor(x: number, y: number, vx: number, vy: number, life: number, size: number) {
     this.x = x;
     this.y = y;
@@ -18,6 +36,10 @@ export class Particle {
     this.size = size;
   }
 
+  /**
+   * パーティクルの物理状態を1フレーム分更新する。
+   * 速度に従って移動し、摩擦と重力を適用してライフをカウントダウンする。
+   */
   update(): void {
     if (!this.alive) return;
 
@@ -34,6 +56,10 @@ export class Particle {
     }
   }
 
+  /**
+   * パーティクルをキャンバスに描画する
+   * @param ctx 2Dレンダリングコンテキスト
+   */
   draw(ctx: CanvasRenderingContext2D): void {
     if (!this.alive) return;
 

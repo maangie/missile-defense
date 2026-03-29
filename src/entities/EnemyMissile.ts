@@ -1,18 +1,41 @@
+/** 敵の攻撃ミサイルを表すクラス */
 export class EnemyMissile {
+  /** 現在のX座標 */
   x: number;
+  /** 現在のY座標 */
   y: number;
+  /** 目標のX座標 */
   targetX: number;
+  /** 目標のY座標 */
   targetY: number;
+  /** 移動速度（ピクセル/フレーム） */
   speed: number;
+  /** 生存フラグ */
   alive = true;
 
+  /** 分裂するかどうか */
   split: boolean;
+  /** 分裂するY座標 */
   splitY: number;
+  /** 分裂時に生成する子ミサイルの数 */
   childrenCount: number;
 
+  /** 軌跡の座標履歴 */
   trail: { x: number; y: number }[] = [];
+  /** 軌跡の最大長 */
   trailMax = 18;
 
+  /**
+   * 敵ミサイルを初期化する
+   * @param startX 初期X座標
+   * @param startY 初期Y座標
+   * @param targetX 目標のX座標
+   * @param targetY 目標のY座標
+   * @param speed 移動速度（ピクセル/フレーム）
+   * @param split 分裂するかどうか
+   * @param splitY 分裂するY座標
+   * @param childrenCount 分裂時に生成する子ミサイルの数
+   */
   constructor(
     startX: number,
     startY: number,
@@ -33,6 +56,10 @@ export class EnemyMissile {
     this.childrenCount = childrenCount;
   }
 
+  /**
+   * ミサイルの位置を1フレーム分更新し、軌跡を記録する
+   * @returns 目標（地面）に到達したら true
+   */
   update(): boolean {
     if (!this.alive) return false;
 
@@ -56,10 +83,18 @@ export class EnemyMissile {
     return false;
   }
 
+  /**
+   * ミサイルが分裂すべき状態かどうかを判定する
+   * @returns 生存中かつ split=true かつ splitY に達していたら true
+   */
   shouldSplit(): boolean {
     return this.alive && this.split && this.y >= this.splitY;
   }
 
+  /**
+   * 煙の軌跡をキャンバスに描画する
+   * @param ctx 2Dレンダリングコンテキスト
+   */
   drawTrail(ctx: CanvasRenderingContext2D): void {
     if (this.trail.length < 2) return;
 
@@ -91,6 +126,10 @@ export class EnemyMissile {
     }
   }
 
+  /**
+   * ミサイル本体と軌跡をキャンバスに描画する
+   * @param ctx 2Dレンダリングコンテキスト
+   */
   draw(ctx: CanvasRenderingContext2D): void {
     if (!this.alive) return;
 

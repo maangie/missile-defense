@@ -7,60 +7,105 @@ import { PlayerMissile } from "../entities/PlayerMissile";
 import { ScorePopup } from "../entities/ScorePopup";
 import type { Base, Star, Vec2 } from "../types/common";
 
+/** ゲーム全体の状態管理と描画を担うメインクラス */
 export class Game {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 
+  /** 現在のゲーム状態 */
   state: "title" | "playing" | "gameover" = "title";
 
+  /** キャンバスの幅（ピクセル） */
   width = 0;
+  /** キャンバスの高さ（ピクセル） */
   height = 0;
+  /** 地面のY座標 */
   groundY = 0;
 
+  /** 現在のスコア */
   score = 0;
+  /** ハイスコア */
   highScore = 0;
+  /** 現在のウェーブ番号 */
   wave = 1;
 
+  /** 画面フラッシュの強度（0〜1） */
   flashStrength = 0;
+  /** 画面フラッシュの色（RGB文字列） */
   flashColor = "255,255,255";
 
+  /** 画面シェイクの残りフレーム数 */
   shakeTime = 0;
+  /** 画面シェイクの振幅 */
   shakeStrength = 0;
 
+  /** 照準カーソルの座標 */
   cursor: Vec2 = { x: 200, y: 200 };
+  /** 照準カーソルの残像座標（慣性効果） */
   cursorTrail: Vec2 = { x: 200, y: 200 };
+  /** 残像の追従速度 */
   cursorTrailSpeed = 0.18;
+  /** カーソルのX方向速度 */
   cursorVX = 0;
+  /** カーソルのY方向速度 */
   cursorVY = 0;
+  /** マウス移動量に対するカーソル加速度の倍率 */
   cursorSensitivity = 0.35;
+  /** カーソル速度の減衰率 */
   cursorFriction = 0.90;
+  /** カーソルの最大速度（ピクセル/フレーム） */
   cursorMaxSpeed = 18;
 
+  /** ミサイル基地の配列 */
   bases: Base[] = [];
+  /** 都市の配列 */
   cities: City[] = [];
+  /** 背景の星の配列 */
   stars: Star[] = [];
 
+  /** 敵ミサイルの配列 */
   enemyMissiles: EnemyMissile[] = [];
+  /** プレイヤーミサイルの配列 */
   playerMissiles: PlayerMissile[] = [];
+  /** 爆発エフェクトの配列 */
   explosions: Explosion[] = [];
+  /** パーティクルの配列 */
   particles: Particle[] = [];
+  /** スコアポップアップの配列 */
   scorePopups: ScorePopup[] = [];
 
+  /** 敵スポーンのタイマー */
   spawnTimer = 0;
+  /** 敵スポーンの間隔（フレーム数） */
   spawnInterval = 55;
+  /** 1ウェーブあたりの敵数 */
   enemiesPerWave = 12;
+  /** 現在のウェーブでスポーン済みの敵数 */
   enemiesSpawned = 0;
+  /** 現在のウェーブで撃墜した敵数 */
   enemiesDestroyed = 0;
+  /** 敵ミサイルの分裂確率（0〜1） */
   splitChance = 0.15;
+  /** 敵ミサイルの速度スケール */
   speedScale = 1;
 
+  /** 現在のコンボ数 */
   combo = 0;
+  /** コンボが続いている残りフレーム数 */
   comboTimer = 0;
+  /** コンボが途切れるまでのフレーム数 */
   comboWindow = 40;
+  /** 現在のコンボ倍率 */
   comboMultiplier = 1;
 
+  /** 効果音管理 */
   sound = new Sound();
 
+  /**
+   * Gameインスタンスを初期化する
+   * @param canvas 描画先のキャンバス要素
+   * @param ctx 2Dレンダリングコンテキスト
+   */
   constructor(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
     this.canvas = canvas;
     this.ctx = ctx;
@@ -70,6 +115,7 @@ export class Game {
     this.bindEvents();
   }
 
+  /** マウス・キーボード・ウィンドウリサイズのイベントリスナーを登録する */
   private bindEvents(): void {
     window.addEventListener("resize", () => this.resize());
 
@@ -112,21 +158,25 @@ export class Game {
     });
   }
 
+  /** ゲームをリセットして開始状態にする */
   startGame(): void {
     this.reset();
     this.state = "playing";
   }
 
+  /** LocalStorage からハイスコアを読み込む */
   loadHighScore(): void {
     const raw = localStorage.getItem("missile-command-like-highscore");
     const value = raw ? Number(raw) : 0;
     this.highScore = Number.isFinite(value) ? value : 0;
   }
 
+  /** 現在のハイスコアを LocalStorage に保存する */
   saveHighScore(): void {
     localStorage.setItem("missile-command-like-highscore", String(this.highScore));
   }
 
+  /** 現在のスコアがハイスコアを超えていれば更新して保存する */
   updateHighScore(): void {
     if (this.score > this.highScore) {
       this.highScore = this.score;
@@ -134,6 +184,7 @@ export class Game {
     }
   }
 
+  /** キャンバスをウィンドウサイズに合わせてリサイズし、初期配置を更新する */
   resize(): void {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
@@ -153,6 +204,7 @@ export class Game {
     }
   }
 
+  /** 左・中・右の3カ所にミサイル基地を配置する */
   private setupBases(): void {
     const y = this.groundY;
     this.bases = [
@@ -162,6 +214,7 @@ export class Game {
     ];
   }
 
+  /** 6カ所に都市を配置する */
   private setupCities(): void {
     const y = this.groundY;
     const positions = [
@@ -175,6 +228,10 @@ export class Game {
     this.cities = positions.map((x) => new City(x, y));
   }
 
+  /**
+   * 背景の星をランダムに生成する
+   * @param count 生成する星の数（デフォルト: 120）
+   */
   generateStars(count = 120): void {
     this.stars = [];
     for (let i = 0; i < count; i++) {
@@ -187,6 +244,7 @@ export class Game {
     }
   }
 
+  /** ゲーム状態を初期値にリセットする */
   reset(): void {
     this.score = 0;
     this.wave = 1;
@@ -220,22 +278,45 @@ export class Game {
     this.cursorVY = 0;
   }
 
+  /**
+   * 指定した範囲のランダムな数値を返す
+   * @param min 最小値
+   * @param max 最大値
+   * @returns min 以上 max 未満のランダムな数値
+   */
   rand(min: number, max: number): number {
     return Math.random() * (max - min) + min;
   }
 
+  /**
+   * 生存している都市の一覧を返す
+   * @returns 生存中の City 配列
+   */
   getAliveCities(): City[] {
     return this.cities.filter((c) => c.alive);
   }
 
+  /**
+   * 生存している基地の一覧を返す
+   * @returns 生存中の Base 配列
+   */
   getAliveBases(): Base[] {
     return this.bases.filter((b) => b.alive);
   }
 
+  /**
+   * 弾薬が残っている生存基地の一覧を返す
+   * @returns 弾薬があり生存中の Base 配列
+   */
   getAvailableBases(): Base[] {
     return this.bases.filter((b) => b.alive && b.ammo > 0);
   }
 
+  /**
+   * 目標X座標に最も近い利用可能な基地を返す
+   * @param targetX 目標のX座標
+   * @returns 最近傍の利用可能な基地、存在しなければ null
+   */
   findNearestAvailableBase(targetX: number): Base | null {
     const availableBases = this.getAvailableBases();
     if (availableBases.length === 0) return null;
@@ -254,6 +335,7 @@ export class Game {
     return best;
   }
 
+  /** 照準カーソルの位置と速度を1フレーム分更新する */
   updateCursor(): void {
     this.cursor.x += this.cursorVX;
     this.cursor.y += this.cursorVY;
@@ -285,6 +367,11 @@ export class Game {
     this.cursorTrail.y += (this.cursor.y - this.cursorTrail.y) * this.cursorTrailSpeed;
   }
 
+  /**
+   * 最寄りの基地からプレイヤーミサイルを発射する
+   * @param targetX 目標のX座標
+   * @param targetY 目標のY座標
+   */
   firePlayerMissile(targetX: number, targetY: number): void {
     const base = this.findNearestAvailableBase(targetX);
     if (!base) return;
@@ -300,6 +387,10 @@ export class Game {
     this.playerMissiles.push(new PlayerMissile(base.x, base.y, targetX, targetY, 7.2));
   }
 
+  /**
+   * 生存している都市・基地からランダムに地上目標を選択する
+   * @returns 選択した目標の座標、対象がなければ null
+   */
   pickRandomGroundTarget(): Vec2 | null {
     const targets: Vec2[] = [];
 
@@ -314,6 +405,7 @@ export class Game {
     return targets[Math.floor(Math.random() * targets.length)];
   }
 
+  /** 現在のウェーブ番号に応じて難易度パラメータを設定する */
   applyWaveSettings(): void {
     const w = this.wave;
 
@@ -336,6 +428,7 @@ export class Game {
     }
   }
 
+  /** 敵ミサイルを1体スポーンする（ウェーブ上限に達している場合は何もしない） */
   spawnEnemyMissile(): void {
     if (this.enemiesSpawned >= this.enemiesPerWave) return;
 
@@ -364,6 +457,10 @@ export class Game {
     this.enemiesSpawned++;
   }
 
+  /**
+   * 敵ミサイルを分裂させ、子ミサイルを生成する
+   * @param parent 分裂する親ミサイル
+   */
   splitEnemyMissile(parent: EnemyMissile): void {
     if (!parent.alive) return;
 
@@ -396,10 +493,23 @@ export class Game {
     }
   }
 
+  /**
+   * 爆発エフェクトを生成する
+   * @param x 爆発中心のX座標
+   * @param y 爆発中心のY座標
+   * @param maxRadius 最大爆発半径（デフォルト: 60）
+   */
   createExplosion(x: number, y: number, maxRadius = 60): void {
     this.explosions.push(new Explosion(x, y, maxRadius));
   }
 
+  /**
+   * パーティクルエフェクトを生成する
+   * @param x 生成中心のX座標
+   * @param y 生成中心のY座標
+   * @param count 生成するパーティクルの数
+   * @param power 速度の倍率（デフォルト: 1）
+   */
   createParticles(x: number, y: number, count: number, power = 1): void {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -413,6 +523,12 @@ export class Game {
     }
   }
 
+  /**
+   * スコアポップアップを生成する
+   * @param x 表示X座標
+   * @param y 表示Y座標
+   * @param value 表示するスコア値
+   */
   createScorePopup(x: number, y: number, value: number): void {
     this.scorePopups.push(
       new ScorePopup(
@@ -423,12 +539,18 @@ export class Game {
     );
   }
 
+  /** 命中を記録し、コンボカウントとコンボ倍率を更新する */
   registerHit(): void {
     this.combo++;
     this.comboTimer = this.comboWindow;
     this.comboMultiplier = 1 + Math.floor(this.combo / 3);
   }
 
+  /**
+   * 指定座標周辺の都市・基地にダメージを与える
+   * @param x 爆発中心のX座標
+   * @param y 爆発中心のY座標
+   */
   damageGroundTarget(x: number, y: number): void {
     for (const city of this.cities) {
       if (city.alive && Math.hypot(city.x - x, city.y - y) < 28) {
@@ -444,6 +566,7 @@ export class Game {
     }
   }
 
+  /** ウェーブクリアを判定し、クリアボーナスの加算とウェーブ進行を行う */
   updateWave(): void {
     const waveCleared =
       this.enemiesSpawned >= this.enemiesPerWave &&
@@ -475,16 +598,27 @@ export class Game {
     this.spawnTimer = 0;
   }
 
+  /**
+   * 画面フラッシュエフェクトをトリガーする
+   * @param strength フラッシュの強度（0〜1）
+   * @param color フラッシュの色（RGB文字列）
+   */
   triggerFlash(strength: number, color = "255,255,255"): void {
     this.flashStrength = Math.max(this.flashStrength, strength);
     this.flashColor = color;
   }
 
+  /**
+   * 画面シェイクエフェクトをトリガーする
+   * @param duration シェイクの持続フレーム数
+   * @param strength シェイクの振幅（ピクセル）
+   */
   triggerShake(duration: number, strength: number): void {
     this.shakeTime = Math.max(this.shakeTime, duration);
     this.shakeStrength = Math.max(this.shakeStrength, strength);
   }
 
+  /** ゲームの1フレーム分の状態を更新する */
   update(): void {
     this.updateCursor();
 
@@ -598,6 +732,7 @@ export class Game {
     }
   }
 
+  /** 空の背景グラデーションを描画する */
   drawSky(): void {
     const sky = this.ctx.createLinearGradient(0, 0, 0, this.height);
     sky.addColorStop(0, "#000000");
@@ -607,6 +742,7 @@ export class Game {
     this.ctx.fillRect(0, 0, this.width, this.height);
   }
 
+  /** 背景の星をきらめき効果付きで描画する */
   drawStars(): void {
     const t = performance.now() * 0.001;
     for (let i = 0; i < this.stars.length; i++) {
@@ -619,6 +755,7 @@ export class Game {
     }
   }
 
+  /** 遠景の山並みシルエットを描画する */
   drawMountains(): void {
     const y = this.groundY - 30;
     this.ctx.fillStyle = "rgba(20,20,30,0.9)";
@@ -637,6 +774,7 @@ export class Game {
     this.ctx.fill();
   }
 
+  /** 都市のビルシルエットを描画する */
   drawSkyline(): void {
     const baseY = this.groundY - 8;
     this.ctx.fillStyle = "rgba(10,10,18,0.95)";
@@ -652,11 +790,13 @@ export class Game {
     }
   }
 
+  /** 地面を描画する */
   drawGround(): void {
     this.ctx.fillStyle = "#2a1800";
     this.ctx.fillRect(0, this.groundY, this.width, this.height - this.groundY);
   }
 
+  /** ミサイル基地を三角形で描画する */
   drawBases(): void {
     for (const base of this.bases) {
       if (!base.alive) continue;
@@ -671,12 +811,14 @@ export class Game {
     }
   }
 
+  /** 都市を描画する */
   drawCities(): void {
     for (const city of this.cities) {
       city.draw(this.ctx);
     }
   }
 
+  /** エイムカーソルと残像を描画する */
   drawCursor(): void {
     const dx = this.cursor.x - this.cursorTrail.x;
     const dy = this.cursor.y - this.cursorTrail.y;
@@ -703,6 +845,7 @@ export class Game {
     this.ctx.stroke();
   }
 
+  /** 各基地の残弾数（L/C/R）を画面下部に描画する */
   drawAmmoUI(): void {
     this.ctx.font = "18px sans-serif";
     this.ctx.fillStyle = "#ffffff";
@@ -715,6 +858,7 @@ export class Game {
     });
   }
 
+  /** スコア・ウェーブ・残敵数・都市数・コンボ等のUIを描画する */
   drawUI(): void {
     this.ctx.fillStyle = "#ffffff";
     this.ctx.font = "20px sans-serif";
@@ -747,6 +891,7 @@ export class Game {
     }
   }
 
+  /** タイトル画面を描画する */
   drawTitle(): void {
     this.ctx.textAlign = "center";
     this.ctx.fillStyle = "#ffffff";
@@ -764,6 +909,7 @@ export class Game {
     this.ctx.fillText("マウスで照準 / クリックで発射", this.width / 2, this.height * 0.62);
   }
 
+  /** ゲームオーバー画面を描画する */
   drawGameOver(): void {
     this.ctx.textAlign = "center";
     this.ctx.font = "56px sans-serif";
@@ -780,12 +926,14 @@ export class Game {
     this.ctx.fillText("右クリックまたはキーで再スタート", this.width / 2, this.height * 0.65);
   }
 
+  /** 画面フラッシュエフェクトを描画する */
   drawFlash(): void {
     if (this.flashStrength <= 0) return;
     this.ctx.fillStyle = `rgba(${this.flashColor}, ${Math.min(this.flashStrength, 1)})`;
     this.ctx.fillRect(0, 0, this.width, this.height);
   }
 
+  /** 1フレーム分の全描画処理を行う */
   draw(): void {
     this.ctx.save();
 
@@ -826,6 +974,7 @@ export class Game {
     this.ctx.restore();
   }
 
+  /** requestAnimationFrame を使ったゲームループを実行する */
   loop = (): void => {
     this.update();
     this.draw();

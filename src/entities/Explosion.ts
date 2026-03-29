@@ -1,17 +1,34 @@
+/** プレイヤーミサイルや敵ミサイルの爆発エフェクトを表すクラス */
 export class Explosion {
+  /** 爆発中心のX座標 */
   x: number;
+  /** 爆発中心のY座標 */
   y: number;
+  /** 現在の爆発半径 */
   radius = 1;
+  /** 最大爆発半径 */
   maxRadius: number;
+  /** 成長フェーズかどうか */
   growing = true;
+  /** 生存フラグ（false になると描画・当たり判定から除外される） */
   alive = true;
 
+  /**
+   * 爆発を初期化する
+   * @param x 爆発中心のX座標
+   * @param y 爆発中心のY座標
+   * @param maxRadius 最大爆発半径
+   */
   constructor(x: number, y: number, maxRadius: number) {
     this.x = x;
     this.y = y;
     this.maxRadius = maxRadius;
   }
 
+  /**
+   * 爆発の状態を1フレーム分更新する。
+   * maxRadius に達するまで成長し、その後縮小して消滅する。
+   */
   update(): void {
     if (!this.alive) return;
 
@@ -28,10 +45,20 @@ export class Explosion {
     }
   }
 
+  /**
+   * 指定した座標が爆発半径内に含まれるか判定する
+   * @param x 判定するX座標
+   * @param y 判定するY座標
+   * @returns 半径内なら true
+   */
   contains(x: number, y: number): boolean {
     return Math.hypot(this.x - x, this.y - y) <= this.radius;
   }
 
+  /**
+   * 爆発エフェクトをキャンバスに描画する
+   * @param ctx 2Dレンダリングコンテキスト
+   */
   draw(ctx: CanvasRenderingContext2D): void {
     if (!this.alive) return;
 
