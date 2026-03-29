@@ -531,6 +531,8 @@ export class Game {
 
           if (explosion.contains(missile.x, missile.y)) {
             missile.alive = false;
+            explosion.maxRadius += 28;
+            explosion.growing = true;
             this.registerHit();
 
             const gained = 100 * this.comboMultiplier;
