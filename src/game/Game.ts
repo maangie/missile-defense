@@ -55,6 +55,11 @@ export class Game {
   cursorFriction = 0.90;
   /** カーソルの最大速度（ピクセル/フレーム） */
   cursorMaxSpeed = 18;
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private lastTouchX = 0;
+  private lastTouchY = 0;
+  private readonly TAP_THRESHOLD = 10;
 
   /** ミサイル基地の配列 */
   bases: Base[] = [];
@@ -156,6 +161,48 @@ export class Game {
         this.startGame();
       }
     });
+
+    this.canvas.addEventListener("touchstart", (e: TouchEvent) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      this.touchStartX = t.clientX;
+      this.touchStartY = t.clientY;
+      this.lastTouchX = t.clientX;
+      this.lastTouchY = t.clientY;
+    }, { passive: false });
+
+    this.canvas.addEventListener("touchmove", (e: TouchEvent) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      const dx = t.clientX - this.lastTouchX;
+      const dy = t.clientY - this.lastTouchY;
+      this.lastTouchX = t.clientX;
+      this.lastTouchY = t.clientY;
+
+      this.cursorVX += dx * this.cursorSensitivity;
+      this.cursorVY += dy * this.cursorSensitivity;
+      this.cursorVX = Math.max(-this.cursorMaxSpeed, Math.min(this.cursorMaxSpeed, this.cursorVX));
+      this.cursorVY = Math.max(-this.cursorMaxSpeed, Math.min(this.cursorMaxSpeed, this.cursorVY));
+    }, { passive: false });
+
+    this.canvas.addEventListener("touchend", (e: TouchEvent) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      const dx = t.clientX - this.touchStartX;
+      const dy = t.clientY - this.touchStartY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < this.TAP_THRESHOLD) {
+        if (this.sound.ctx.state === "suspended") {
+          void this.sound.ctx.resume();
+        }
+        if (this.state === "title" || this.state === "gameover") {
+          this.startGame();
+        } else {
+          this.firePlayerMissile(this.cursor.x, this.cursor.y);
+        }
+      }
+    }, { passive: false });
   }
 
   /** ゲームをリセットして開始状態にする */
@@ -902,11 +949,11 @@ export class Game {
     const alpha = 0.6 + Math.sin(t) * 0.4;
     this.ctx.fillStyle = `rgba(200,200,200,${alpha})`;
     this.ctx.font = "20px sans-serif";
-    this.ctx.fillText("クリックで開始", this.width / 2, this.height * 0.55);
+    this.ctx.fillText("タップ / クリックで開始", this.width / 2, this.height * 0.55);
 
     this.ctx.font = "16px sans-serif";
     this.ctx.fillStyle = "#888";
-    this.ctx.fillText("マウスで照準 / クリックで発射", this.width / 2, this.height * 0.62);
+    this.ctx.fillText("スワイプで照準 / タップ・クリックで発射", this.width / 2, this.height * 0.62);
   }
 
   /** ゲームオーバー画面を描画する */
@@ -923,7 +970,7 @@ export class Game {
 
     this.ctx.font = "18px sans-serif";
     this.ctx.fillStyle = "#cccccc";
-    this.ctx.fillText("右クリックまたはキーで再スタート", this.width / 2, this.height * 0.65);
+    this.ctx.fillText("タップ / キー / 右クリックで再スタート", this.width / 2, this.height * 0.65);
   }
 
   /** 画面フラッシュエフェクトを描画する */
